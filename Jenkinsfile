@@ -3,7 +3,7 @@ pipeline {
 	parameters {
 		string(
 			name: 'GIT_URL',
-			defaultValue: 'https://github.com/rhtuser/counter.git'
+			defaultValue: 'https://github.com/rhtuser/DO400-apps.git'
 		)
 		booleanParam(
 			name: 'RUN_TESTS',
@@ -18,11 +18,13 @@ pipeline {
 			}
 		}
 		stage('Perform build') {
-			input {
-				message "Do you want to rebuild?"
-			}
 			steps {
 				echo "Rebuilding the application."
+				sh '''
+				cd home-automation-service/
+				./mvnw clean package -DskipTests -Dquarkus.package.type=uber-jar
+				'''
+				archiveArtifacts 'home-automation-service/target/*-runner.jar'
 			}
 		}
 		stage('Run tests') {
