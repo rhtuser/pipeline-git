@@ -29,8 +29,17 @@ pipeline {
 			when {
 				expression { params.RUN_TESTS == true }
 			}
-			steps {
-				echo "Running tests"
+			stages {
+				stage('Unit tests') {
+					steps {
+						echo "Running unit tests"
+					}
+				}
+				stage('Integration tests') {
+					steps {
+						echo "Running integration tests"
+					}
+				}
 			}
 		}
     }
