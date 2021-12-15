@@ -1,8 +1,5 @@
 pipeline {
     agent { label 'maven' }
-	environment {
-		PROJECT_NAME = 'Home Automation Service CI/CD Pipeline'
-	}
 	parameters {
 		string(
 			name: 'GIT_URL',
@@ -16,6 +13,10 @@ pipeline {
 			name: 'RUN_TESTS',
 			defaultValue: true
 		)
+	}
+	environment {
+		PROJECT_NAME = 'Home Automation Service CI/CD Pipeline'
+		WORKDIR = ${params.SUBPROJECT}
 	}
     stages {
 		stage('Say hello') {
@@ -33,10 +34,10 @@ pipeline {
 			steps {
 				echo "Rebuilding the application."
 				sh '''
-				cd ${params.SUBPROJECT}/
+				cd ${WORKDIR}/
 				./mvnw clean package -DskipTests -Dquarkus.package.type=uber-jar
 				'''
-				archiveArtifacts '${params.SUBPROJECT}/target/*-runner.jar'
+				archiveArtifacts "${params.SUBPROJECT}/target/*-runner.jar"
 			}
 		}
 		stage('Run tests') {
@@ -48,7 +49,7 @@ pipeline {
 					steps {
 						echo "Running unit tests"
 						sh '''
-						cd ${params.SUBPROJECT}/
+						cd ${WORKDIR}/
 						./mvnw test
 						'''
 					}
@@ -57,7 +58,7 @@ pipeline {
 					steps {
 						echo "Running integration tests"
 						sh '''
-						cd ${params.SUBPROJECT}/
+						cd ${WORKDIR}/
 						./mvnw verify
 						'''
 					}
@@ -73,7 +74,7 @@ pipeline {
 				echo '(authenticating to quay.io as ${env.QUAY_USR})'
 				// pushing to quay.io/rhtuser/home-automation-service:latest
 				sh '''
-				cd ${params.SUBPROJECT}/
+				cd ${WORKDIR}/
 				./mvnw quarkus:add-extension -Dextensions=container-image-jib
 				./mvnw package \
 					-Dquarkus.jib.base-jvm-image=registry.access.redhat.com/ubi8/openjdk-11:latest \
@@ -82,8 +83,8 @@ pipeline {
 					-Dquarkus.container-image.registry=quay.io \
 					-Dquarkus.container-image.group=rhtuser \
 					-Dquarkus.container-image.name=home-automation-service \
-					-Dquarkus.container-image.username=${env.QUAY_USR} \
-					-Dquarkus.container-image.password=${env.QUAY_PSW}
+					-Dquarkus.container-image.username=${QUAY_USR} \
+					-Dquarkus.container-image.password=${QUAY_PSW}
 				'''
 			}
 		}
