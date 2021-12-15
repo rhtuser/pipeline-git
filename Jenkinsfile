@@ -16,7 +16,7 @@ pipeline {
 	}
 	environment {
 		PROJECT_NAME = 'Home Automation Service CI/CD Pipeline'
-		WORKDIR = ${params.SUBPROJECT}
+		WORKDIR = "${params.SUBPROJECT}"
 	}
     stages {
 		stage('Say hello') {
