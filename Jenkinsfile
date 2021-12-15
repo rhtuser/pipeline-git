@@ -4,7 +4,7 @@ pipeline {
 		string(
 			name: 'GIT_URL',
 			defaultValue: 'https://github.com/rhtuser/counter.git'
-		),
+		)
 		booleanParam(
 			name: 'RUN_TESTS',
 			defaultValue: true
