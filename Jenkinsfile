@@ -29,7 +29,7 @@ pipeline {
 			when {
 				expression { params.RUN_TESTS == true }
 			}
-			stages {
+			parallel {
 				stage('Unit tests') {
 					steps {
 						echo "Running unit tests"
