@@ -15,13 +15,14 @@ pipeline {
 		)
 	}
 	environment {
-		PROJECT_NAME = 'Home Automation Service CI/CD Pipeline'
+		PROJECT_NAME = 'gregab-home-automation-service'
+		PROJECT_DESC = 'Home Automation Service CI/CD Pipeline'
 		WORKDIR = "${params.SUBPROJECT}"
 	}
     stages {
 		stage('Say hello') {
 			steps {
-				echo "Welcome to build for ${env.PROJECT_NAME}!"
+				echo "Welcome to build for ${env.PROJECT_DESC}!"
 			}
 		}
 		stage('Clone source code') {
@@ -33,10 +34,12 @@ pipeline {
 		stage('Perform build') {
 			steps {
 				echo "Rebuilding the application."
-				sh '''
-				cd ${WORKDIR}/
-				./mvnw clean package -DskipTests -Dquarkus.package.type=uber-jar
-				'''
+				retry(3) {
+					sh '''
+					cd ${WORKDIR}/
+					./mvnw clean package -DskipTests -Dquarkus.package.type=uber-jar
+					'''
+				}
 				archiveArtifacts "${params.SUBPROJECT}/target/*-runner.jar"
 			}
 		}
@@ -55,12 +58,24 @@ pipeline {
 					}
 				}
 				stage('Integration tests') {
-					steps {
-						echo "Running integration tests"
-						sh '''
-						cd ${WORKDIR}/
-						./mvnw verify
-						'''
+					stages {
+						stage('Prepare') {
+							options {
+								retry(5)
+							}
+							steps {
+								// ...
+							}
+						}
+						stage('Run tests') {
+							steps {
+								echo "Running integration tests"
+								sh '''
+								cd ${WORKDIR}/
+								./mvnw verify
+								'''
+							}
+						}
 					}
 				}
 			}
@@ -69,6 +84,9 @@ pipeline {
 			environment {
 				QUAY = credentials('quayregistry')
 			}
+			options {
+				timeout(unit: 'SECONDS', time: 180)
+			}
 			steps {
 				echo 'Building container image with JIB'
 				echo '(authenticating to quay.io as ${env.QUAY_USR})'
@@ -76,7 +94,7 @@ pipeline {
 				sh '''
 				cd ${WORKDIR}/
 				./mvnw quarkus:add-extension -Dextensions=container-image-jib
-				./mvnw package \
+				./mvnw package -DskipTests \
 					-Dquarkus.jib.base-jvm-image=registry.access.redhat.com/ubi8/openjdk-11:latest \
 					-Dquarkus.container-image.build=true \
 					-Dquarkus.container-image.push=true \
@@ -88,5 +106,27 @@ pipeline {
 				'''
 			}
 		}
+		stage('Create OpenShift Resources') {
+			agent { label 'base' }
+			steps {
+				timeout(time: 10, unit: 'MINUTES') {
+					input "Deploy to openshift?"
+				}
+				sh '''
+					oc delete -w project ${PROJECT_NAME}
+					oc new-project ${PROJECT_NAME}
+					oc extract secrets/sshkey --to=./secretdir/
+				'''
+			}
+		}
     }
+	post {
+		failure {
+			mail to: "admins@example.com",
+					subject: "Pipeline build for ${env.PROJECT_NAME} failed!",
+					body: '''
+					Warning! ...
+					'''
+		}
+	}
 }
